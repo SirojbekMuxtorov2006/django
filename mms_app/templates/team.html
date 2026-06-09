@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block header_title %}Operations Team Directory{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Left panel: Register/Invite User -->
+    <div class="col-12 col-lg-4">
+        <div class="glass-panel p-4 border-glass h-100">
+            <h5 class="font-outfit text-white mb-3 d-flex align-items-center">
+                <i class="bi bi-person-plus-fill text-cyan me-2"></i> Yangi A'zo Qo'shish
+            </h5>
+            <p class="text-muted small mb-4">Guruhga yangi texnik xodim yoki operator qo'shish uchun quyidagi formani to'ldiring:</p>
+
+            <form method="POST">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="username" class="form-label text-light small">Foydalanuvchi Nomi (Username)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-person"></i></span>
+                        <input type="text" class="form-control bg-dark border-secondary text-white" id="username" name="username" required placeholder="Sirojbek">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label text-light small">Email Manzil</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-envelope"></i></span>
+                        <input type="email" class="form-control bg-dark border-secondary text-white" id="email" name="email" required placeholder="user@company.com">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label text-light small">Kirish Kaliti (Password)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-key"></i></span>
+                        <input type="password" class="form-control bg-dark border-secondary text-white" id="password" name="password" required placeholder="••••••••">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-cyan w-100 mt-2">Ro'yxatdan O'tkazish</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right panel: Team Members List -->
+    <div class="col-12 col-lg-8">
+        <div class="glass-panel p-4 border-glass h-100">
+            <h5 class="font-outfit text-white mb-4 d-flex align-items-center">
+                <i class="bi bi-shield-shaded text-violet me-2"></i> Faol Jamoa A'zolari
+            </h5>
+
+            <div class="row g-3">
+                {% if users %}
+                    {% for user in users %}
+                    <div class="col-12 col-md-6">
+                        <div class="team-card glass-panel p-3 border-glass d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="avatar-large bg-dark-opacity border border-cyan text-cyan font-outfit fw-bold position-relative">
+                                    {{ user.username|slice:":1"|upper }}
+                                    <span class="position-absolute bottom-0 end-0 p-1 bg-success border border-dark rounded-circle" title="Online"></span>
+                                </div>
+                                <div>
+                                    <h6 class="font-outfit text-white fw-bold m-0">{{ user.username }}</h6>
+                                    <span class="text-muted extra-small d-block">{{ user.email|default:"no-email@core.mms" }}</span>
+                                    <span class="text-muted extra-small">Qo'shildi: {{ user.date_joined|date:"d.m.Y" }}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Task load badge -->
+                            <div class="text-end">
+                                <span class="badge bg-{% if user.active_tasks > 3 %}danger{% elif user.active_tasks > 0 %}warning{% else %}success{% endif %}-opacity text-{% if user.active_tasks > 3 %}danger{% elif user.active_tasks > 0 %}warning{% else %}success{% endif %} border border-{% if user.active_tasks > 3 %}danger{% elif user.active_tasks > 0 %}warning{% else %}success{% endif %}-opacity">
+                                    {{ user.active_tasks }} faol vazifa
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="col-12 text-center text-muted p-5">
+                        A'zolar ro'yxati bo'sh.
+                    </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

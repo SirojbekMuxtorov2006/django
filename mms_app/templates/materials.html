@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block header_title %}Material & Assets Registry{% endblock %}
+
+{% block content %}
+<!-- FILTER BAR & ADD ACTION -->
+<div class="glass-panel p-3 mb-4 border-glass d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <form method="GET" class="d-flex flex-wrap gap-2 align-items-center">
+        <!-- Category Filter -->
+        <select name="category" class="form-select form-select-sm bg-dark border-secondary text-light width-auto">
+            <option value="">Barcha Kategoriyalar</option>
+            {% for cat_val, cat_lbl in categories %}
+            <option value="{{ cat_val }}" {% if selected_category == cat_val %}selected{% endif %}>{{ cat_lbl }}</option>
+            {% endfor %}
+        </select>
+        
+        <!-- Status Filter -->
+        <select name="status" class="form-select form-select-sm bg-dark border-secondary text-light width-auto">
+            <option value="">Barcha Holatlar</option>
+            <option value="good" {% if selected_status == 'good' %}selected{% endif %}>Etarli (Good)</option>
+            <option value="low" {% if selected_status == 'low' %}selected{% endif %}>Kam qolgan (Low)</option>
+            <option value="out" {% if selected_status == 'out' %}selected{% endif %}>Tugagan (Out of Stock)</option>
+        </select>
+
+        <button type="submit" class="btn btn-cyan btn-sm"><i class="bi bi-filter"></i> Filter</button>
+        {% if selected_category or selected_status %}
+        <a href="{% url 'materials' %}" class="btn btn-outline-secondary btn-sm">Tozalash</a>
+        {% endif %}
+    </form>
+
+    <button type="button" class="btn btn-cyan btn-sm" data-bs-toggle="modal" data-bs-target="#addMaterialModal">
+        <i class="bi bi-plus-circle me-1"></i> Yangi Material Qo'shish
+    </button>
+</div>
+
+<!-- MATERIALS GRID -->
+<div class="row g-4">
+    {% if materials %}
+        {% for material in materials %}
+        <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="material-card glass-panel h-100 border-{{ material.status_class }} d-flex flex-column justify-content-between overflow-hidden">
+                <div>
+                    <!-- Image Area -->
+                    <div class="material-image-area position-relative bg-dark-opacity border-bottom d-flex align-items-center justify-content-center" style="height: 160px;">
+                        {% if material.image %}
+                            <img src="{{ material.image.url }}" alt="{{ material.name }}" class="img-fluid w-100 h-100 object-fit-cover">
+                        {% else %}
+                            <i class="bi bi-box-seam text-secondary fs-1"></i>
+                        {% endif %}
+                        <span class="position-absolute top-2 end-2 badge bg-{{ material.status_class }}">
+                            {{ material.status }}
+                        </span>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="p-3">
+                        <span class="text-muted small uppercase fw-bold">{{ material.get_category_display }}</span>
+                        <h5 class="font-outfit text-white fw-bold mt-1 mb-2">{{ material.name }}</h5>
+                        
+                        <div class="d-flex justify-content-between border-bottom border-secondary py-1 small">
+                            <span class="text-muted">Joriy miqdor:</span>
+                            <span class="text-white fw-bold">{{ material.quantity }} {{ material.unit }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between py-1 small">
+                            <span class="text-muted">Min. talab:</span>
+                            <span class="text-light">{{ material.min_required }} {{ material.unit }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer actions -->
+                <div class="p-3 border-top border-secondary bg-dark-opacity d-flex justify-content-between align-items-center">
+                    <span class="text-muted extra-small">Yangilangan: {{ material.last_updated|date:"d.m.Y" }}</span>
+                    <a href="{% url 'delete_material' material.pk %}" class="btn btn-outline-danger btn-xs" onclick="return confirm('Haqiqatan ham ushbu materialni o‘chirmoqchimisiz?')">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="glass-panel p-5 text-center border-glass">
+                <i class="bi bi-boxes text-muted fs-1 mb-3 d-block"></i>
+                <h5 class="text-white">Hech qanday material topilmadi</h5>
+                <p class="text-muted small">Qidiruv parametrlarini o'zgartiring yoki yangi material qo'shing.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- ADD MATERIAL MODAL -->
+<div class="modal fade" id="addMaterialModal" tabindex="-1" aria-labelledby="addMaterialModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary glass-panel">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title font-outfit text-white" id="addMaterialModalLabel">Yangi Material Qo'shish</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label text-light small">Material Nomi</label>
+                        <input type="text" class="form-control bg-dark border-secondary text-white" id="name" name="name" required placeholder="Masalan: Sensor Moduli v3">
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="category" class="form-label text-light small">Kategoriya</label>
+                            <select class="form-select bg-dark border-secondary text-white" id="category" name="category" required>
+                                {% for cat_val, cat_lbl in categories %}
+                                <option value="{{ cat_val }}">{{ cat_lbl }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label for="unit" class="form-label text-light small">Birlik</label>
+                            <input type="text" class="form-control bg-dark border-secondary text-white" id="unit" name="unit" value="pcs" required placeholder="pcs, kg, litr">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="quantity" class="form-label text-light small">Boshlang'ich Miqdor</label>
+                            <input type="number" step="any" class="form-control bg-dark border-secondary text-white" id="quantity" name="quantity" value="0" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="min_required" class="form-label text-light small">Minimal Zaxira</label>
+                            <input type="number" step="any" class="form-control bg-dark border-secondary text-white" id="min_required" name="min_required" value="5" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="image" class="form-label text-light small">Material Rasm (Optional)</label>
+                        <input class="form-control bg-dark border-secondary text-white" type="file" id="image" name="image" accept="image/*">
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Bekor qilish</button>
+                    <button type="submit" class="btn btn-cyan btn-sm">Yaratish</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

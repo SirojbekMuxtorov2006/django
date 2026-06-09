@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block header_title %}Maintenance & Operations Schedule{% endblock %}
+
+{% block content %}
+<!-- FILTER BAR & ADD ACTION -->
+<div class="glass-panel p-3 mb-4 border-glass d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <form method="GET" class="d-flex flex-wrap gap-2 align-items-center">
+        <!-- Status Filter -->
+        <select name="status" class="form-select form-select-sm bg-dark border-secondary text-light width-auto">
+            <option value="">Barcha Statuslar</option>
+            <option value="backlog" {% if selected_status == 'backlog' %}selected{% endif %}>Kutilayotgan (Backlog)</option>
+            <option value="in_progress" {% if selected_status == 'in_progress' %}selected{% endif %}>Bajarilmoqda (In Progress)</option>
+            <option value="completed" {% if selected_status == 'completed' %}selected{% endif %}>Bajarilgan (Completed)</option>
+        </select>
+        
+        <!-- Priority Filter -->
+        <select name="priority" class="form-select form-select-sm bg-dark border-secondary text-light width-auto">
+            <option value="">Barcha Muhimliklar</option>
+            <option value="high" {% if selected_priority == 'high' %}selected{% endif %}>Yuqori (High)</option>
+            <option value="medium" {% if selected_priority == 'medium' %}selected{% endif %}>O'rta (Medium)</option>
+            <option value="low" {% if selected_priority == 'low' %}selected{% endif %}>Quyi (Low)</option>
+        </select>
+
+        <button type="submit" class="btn btn-cyan btn-sm"><i class="bi bi-filter"></i> Filter</button>
+        {% if selected_status or selected_priority %}
+        <a href="{% url 'tasks' %}" class="btn btn-outline-secondary btn-sm">Tozalash</a>
+        {% endif %}
+    </form>
+
+    <button type="button" class="btn btn-cyan btn-sm" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+        <i class="bi bi-plus-circle me-1"></i> Yangi Vazifa Rejalashtirish
+    </button>
+</div>
+
+<!-- TASKS CONTAINER -->
+<div class="row g-4">
+    {% if tasks %}
+        {% for task in tasks %}
+        <div class="col-12 col-md-6 col-lg-4" id="task-card-{{ task.pk }}">
+            <div class="task-card glass-panel h-100 border-glass border-top-{{ task.priority_class }} d-flex flex-column justify-content-between p-3 position-relative">
+                
+                <!-- Card Header Info -->
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="badge bg-{{ task.priority_class }}-opacity text-{{ task.priority_class }} border border-{{ task.priority_class }}-opacity small">
+                            {{ task.get_priority_display }} Muhimlik
+                        </span>
+                        
+                        <!-- Status Update Dropdown -->
+                        <div class="dropdown">
+                            <button class="btn btn-dark-opacity border btn-xs dropdown-toggle text-{{ task.status_class }} border-{{ task.status_class }}-opacity" type="button" data-bs-toggle="dropdown" id="status-btn-{{ task.pk }}">
+                                {{ task.get_status_display }}
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end bg-dark border-secondary">
+                                <li><button class="dropdown-item status-update-btn text-secondary" data-id="{{ task.pk }}" data-status="backlog">Backlog</button></li>
+                                <li><button class="dropdown-item status-update-btn text-primary" data-id="{{ task.pk }}" data-status="in_progress">In Progress</button></li>
+                                <li><button class="dropdown-item status-update-btn text-success" data-id="{{ task.pk }}" data-status="completed">Completed</button></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h5 class="font-outfit text-white fw-bold my-2">{{ task.title }}</h5>
+                    <p class="text-muted small mb-3">{{ task.description|default:"Tavsif berilmagan." }}</p>
+                </div>
+
+                <!-- Card Footer Info -->
+                <div class="border-top border-secondary pt-3 mt-2 d-flex align-items-center justify-content-between bg-dark-opacity p-2 rounded">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-small bg-cyan text-dark fw-bold">{{ task.assigned_to.username|slice:":1"|upper|default:"?" }}</div>
+                        <div>
+                            <span class="d-block text-white extra-small">Mas'ul</span>
+                            <span class="text-muted small">{{ task.assigned_to.username|default:"Unassigned" }}</span>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="d-block text-white extra-small">Muddati</span>
+                        <span class="text-light small"><i class="bi bi-clock me-1 text-cyan"></i>{{ task.due_date|date:"d.m.Y" }}</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="glass-panel p-5 text-center border-glass">
+                <i class="bi bi-calendar-x text-muted fs-1 mb-3 d-block"></i>
+                <h5 class="text-white">Texnik vazifalar topilmadi</h5>
+                <p class="text-muted small">Qidiruv parametrlarini o'zgartiring yoki yangi vazifa yarating.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- ADD TASK MODAL -->
+<div class="modal fade" id="addTaskModal" tabindex="-1" aria-labelledby="addTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary glass-panel">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title font-outfit text-white" id="addTaskModalLabel">Yangi Texnik Vazifa Qo'shish</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="title" class="form-label text-light small">Vazifa Nomi</label>
+                        <input type="text" class="form-control bg-dark border-secondary text-white" id="title" name="title" required placeholder="Masalan: Generator tizimini moylash">
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label text-light small">Vazifa Tavsifi</label>
+                        <textarea class="form-control bg-dark border-secondary text-white" id="description" name="description" rows="3" placeholder="Bajarilishi kerak bo'lgan texnik ishlarning batafsil tafsiloti..."></textarea>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label for="priority" class="form-label text-light small">Muhimlik Darajasi</label>
+                            <select class="form-select bg-dark border-secondary text-white" id="priority" name="priority">
+                                <option value="low">Quyi (Low)</option>
+                                <option value="medium" selected>O'rta (Medium)</option>
+                                <option value="high">Yuqori (High)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label for="assigned_to" class="form-label text-light small">Mas'ul Xodim</label>
+                            <select class="form-select bg-dark border-secondary text-white" id="assigned_to" name="assigned_to">
+                                <option value="">Biriktirilmagan</option>
+                                {% for user in users %}
+                                <option value="{{ user.pk }}">{{ user.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="due_date" class="form-label text-light small">Bajarish Muddati</label>
+                        <input type="date" class="form-control bg-dark border-secondary text-white" id="due_date" name="due_date" required value="{{ today|date:'Y-m-d' }}">
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Bekor qilish</button>
+                    <button type="submit" class="btn btn-cyan btn-sm">Rejalashtirish</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Set today's date in date picker as default
+        const today = new Date().toISOString().split('T')[0];
+        const dateInput = document.getElementById("due_date");
+        if (dateInput) {
+            dateInput.value = today;
+        }
+
+        // AJAX Status Update Handler
+        const updateButtons = document.querySelectorAll(".status-update-btn");
+        updateButtons.forEach(btn => {
+            btn.addEventListener("click", function () {
+                const taskId = this.getAttribute("data-id");
+                const newStatus = this.getAttribute("data-status");
+                const card = document.getElementById(`task-card-${taskId}`);
+                const statusBtn = document.getElementById(`status-btn-${taskId}`);
+                
+                // Fetch CSRF Token
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                const formData = new FormData();
+                formData.append('status', newStatus);
+                
+                fetch(`/tasks/update/${taskId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Success update styling
+                        // Reload or update class properties dynamically
+                        location.reload(); // Simplest way to re-sort and re-filter correctly, or we can update local styles:
+                        /*
+                        statusBtn.innerText = this.innerText;
+                        // reset status button classes...
+                        */
+                    } else {
+                        alert("Xatolik: Vazifa holatini yangilab bo'lmadi.");
+                    }
+                })
+                .catch(err => {
+                    console.error("Status update error:", err);
+                    alert("Aloqa xatoligi yuz berdi.");
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}

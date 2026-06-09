@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block header_title %}System Dashboard{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <!-- Stat 1: Total Materials -->
+    <div class="col-12 col-md-6 col-lg-3">
+        <div class="stat-card glass-panel p-4 border-cyan">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="text-muted small uppercase fw-semibold">Umumiy Materiallar</span>
+                    <h3 class="font-outfit text-white fw-bold mt-1 mb-0">{{ total_materials }}</h3>
+                </div>
+                <div class="stat-icon bg-cyan-opacity text-cyan">
+                    <i class="bi bi-box-seam-fill"></i>
+                </div>
+            </div>
+            <div class="stat-footer mt-3 small text-muted">
+                <a href="{% url 'materials' %}" class="text-cyan text-decoration-none">Barchasini ko'rish <i class="bi bi-arrow-right"></i></a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stat 2: Low Stock Alert -->
+    <div class="col-12 col-md-6 col-lg-3">
+        <div class="stat-card glass-panel p-4 border-warning">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="text-muted small uppercase fw-semibold">Kam Qolganlar</span>
+                    <h3 class="font-outfit text-white fw-bold mt-1 mb-0 text-warning">{{ low_stock_materials }}</h3>
+                </div>
+                <div class="stat-icon bg-warning-opacity text-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+            </div>
+            <div class="stat-footer mt-3 small">
+                {% if out_of_stock_materials > 0 %}
+                <span class="text-danger"><i class="bi bi-x-circle-fill"></i> {{ out_of_stock_materials }} ta butkul tugagan!</span>
+                {% else %}
+                <span class="text-warning">Kritik darajaga yaqinlar</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Stat 3: Maintenance Tasks -->
+    <div class="col-12 col-md-6 col-lg-3">
+        <div class="stat-card glass-panel p-4 border-violet">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="text-muted small uppercase fw-semibold">Faol Vazifalar</span>
+                    <h3 class="font-outfit text-white fw-bold mt-1 mb-0 text-violet">{{ pending_tasks }}</h3>
+                </div>
+                <div class="stat-icon bg-violet-opacity text-violet">
+                    <i class="bi bi-tools"></i>
+                </div>
+            </div>
+            <div class="stat-footer mt-3 small text-muted">
+                <span class="text-success">{{ completed_tasks }} ta bajarilgan</span> | <a href="{% url 'tasks' %}" class="text-violet text-decoration-none">Jadval</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stat 4: System Health Gauge -->
+    <div class="col-12 col-md-6 col-lg-3">
+        <div class="stat-card glass-panel p-4 border-{{ health_color }}">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="text-muted small uppercase fw-semibold">Tizim Salomatligi</span>
+                    <h3 class="font-outfit text-white fw-bold mt-1 mb-0 text-{{ health_color }}">{{ system_health }}%</h3>
+                </div>
+                <div class="stat-icon bg-{{ health_color }}-opacity text-{{ health_color }}">
+                    <i class="bi bi-heart-pulse-fill"></i>
+                </div>
+            </div>
+            <div class="progress mt-3 bg-dark" style="height: 6px;">
+                <div class="progress-bar bg-{{ health_color }}" role="progressbar" style="width: {{ system_health }}%" aria-valuenow="{{ system_health }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-1 small">
+                <span class="text-muted">Status:</span>
+                <span class="text-{{ health_color }} fw-bold">{{ health_status }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Chart: Inventory Distribution -->
+    <div class="col-12 col-lg-6">
+        <div class="glass-panel p-4 h-100 border-glass">
+            <h5 class="font-outfit text-white mb-4 d-flex align-items-center">
+                <i class="bi bi-pie-chart text-cyan me-2"></i> Ombor Kategoriyalari Analizi
+            </h5>
+            <div class="chart-container d-flex justify-content-center align-items-center" style="position: relative; height:280px;">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live System Alerts Log -->
+    <div class="col-12 col-lg-6">
+        <div class="glass-panel p-4 h-100 border-glass">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="font-outfit text-white m-0 d-flex align-items-center">
+                    <i class="bi bi-bell-fill text-warning me-2 animate-pulse"></i> Tizim Ogohlantirishlari
+                </h5>
+                <span class="badge bg-dark-opacity text-warning border border-warning-opacity">Real-time</span>
+            </div>
+            
+            <div class="alert-list-scroll overflow-y-auto" style="max-height: 280px;">
+                {% if recent_alerts %}
+                    {% for alert in recent_alerts %}
+                    <div class="alert-item d-flex align-items-start gap-3 p-3 mb-2 rounded border-start border-4 bg-dark-opacity border-{{ alert.alert_type }}">
+                        <div class="alert-item-icon text-{{ alert.alert_type }}">
+                            {% if alert.alert_type == 'danger' %}
+                                <i class="bi bi-shield-x fs-5"></i>
+                            {% elif alert.alert_type == 'warning' %}
+                                <i class="bi bi-exclamation-triangle fs-5"></i>
+                            {% else %}
+                                <i class="bi bi-info-circle fs-5"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="m-0 text-light small">{{ alert.message }}</p>
+                            <span class="text-muted extra-small">{{ alert.created_at|timesince }} oldin</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center p-5 text-muted">
+                        <i class="bi bi-check-circle text-success fs-1 mb-2 d-block"></i>
+                        Ogohlantirishlar mavjud emas. Tizim optimal holatda!
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <!-- Active Tasks Summary -->
+    <div class="col-12 col-lg-8">
+        <div class="glass-panel p-4 border-glass h-100">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="font-outfit text-white m-0 d-flex align-items-center">
+                    <i class="bi bi-calendar-event text-violet me-2"></i> Yaqin Oradagi Texnik Vazifalar
+                </h5>
+                <a href="{% url 'tasks' %}" class="btn btn-outline-violet btn-sm">Barcha Vazifalar</a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-dark table-hover table-striped align-middle border-glass">
+                    <thead>
+                        <tr class="text-muted small uppercase">
+                            <th>Vazifa nomi</th>
+                            <th>Mas'ul</th>
+                            <th>Muddati</th>
+                            <th>Muhimlik</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if recent_tasks %}
+                            {% for task in recent_tasks %}
+                            <tr>
+                                <td><span class="fw-semibold text-white">{{ task.title }}</span></td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar-small bg-secondary text-white">{{ task.assigned_to.username|slice:":1"|upper|default:"?" }}</div>
+                                        <span class="small text-light">{{ task.assigned_to.username|default:"Biriktirilmagan" }}</span>
+                                    </div>
+                                </td>
+                                <td><span class="text-light small">{{ task.due_date }}</span></td>
+                                <td>
+                                    <span class="badge bg-{{ task.priority_class }}-opacity text-{{ task.priority_class }} border border-{{ task.priority_class }}-opacity">
+                                        {{ task.get_priority_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ task.status_class }}-opacity text-{{ task.status_class }} border border-{{ task.status_class }}-opacity">
+                                        {{ task.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted p-4">Yaqin orada bajariladigan vazifalar yo'q.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Command Shortcuts -->
+    <div class="col-12 col-lg-4">
+        <div class="glass-panel p-4 border-glass h-100">
+            <h5 class="font-outfit text-white mb-3 d-flex align-items-center">
+                <i class="bi bi-robot text-cyan me-2"></i> AI Tezkor Buyruqlari
+            </h5>
+            <p class="text-muted small">Quyidagi buyruqlarni bosish orqali AI yordamchisidan tezda javob olishingiz mumkin:</p>
+            
+            <div class="d-flex flex-column gap-2 mt-3">
+                <button class="btn btn-outline-cyan btn-sm text-start py-2 px-3 quick-ai-cmd" data-cmd="tizim holati">
+                    <i class="bi bi-cpu me-2"></i> Tizim umumiy holatini tekshirish
+                </button>
+                <button class="btn btn-outline-cyan btn-sm text-start py-2 px-3 quick-ai-cmd" data-cmd="kam qolgan materiallar">
+                    <i class="bi bi-box-seam me-2"></i> Kam qolgan materiallarni topish
+                </button>
+                <button class="btn btn-outline-cyan btn-sm text-start py-2 px-3 quick-ai-cmd" data-cmd="vazifa yarat: Generator moyini tekshirish">
+                    <i class="bi bi-calendar-plus me-2"></i> Yangi texnik vazifa rejalashtirish
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Parse the category counts JSON injected from views.py
+        const catCounts = JSON.parse('{{ cat_counts_json|safe }}');
+        const labels = Object.keys(catCounts);
+        const dataValues = Object.values(catCounts);
+
+        // Fallback data if empty
+        const finalLabels = labels.length ? labels : ['Electronics', 'Mechanical', 'Energy', 'Consumables'];
+        const finalData = dataValues.length ? dataValues : [0, 0, 0, 0];
+
+        const ctx = document.getElementById('categoryChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: finalLabels,
+                datasets: [{
+                    label: 'Miqdori',
+                    data: finalData,
+                    backgroundColor: [
+                        'rgba(6, 182, 212, 0.75)',  // Cyan
+                        'rgba(139, 92, 246, 0.75)',  // Violet
+                        'rgba(59, 130, 246, 0.75)',  // Blue
+                        'rgba(16, 185, 129, 0.75)',  // Green
+                        'rgba(245, 158, 11, 0.75)'   // Orange
+                    ],
+                    borderColor: [
+                        '#06b6d4',
+                        '#8b5cf6',
+                        '#3b82f6',
+                        '#10b981',
+                        '#f59e0b'
+                    ],
+                    borderWidth: 1.5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            color: '#94a3b8',
+                            font: {
+                                family: 'Inter',
+                                size: 12
+                            },
+                            padding: 15
+                        }
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+
+        // Quick AI command triggers
+        const quickCmds = document.querySelectorAll(".quick-ai-cmd");
+        quickCmds.forEach(btn => {
+            btn.addEventListener("click", function () {
+                const cmd = this.getAttribute("data-cmd");
+                const aiInput = document.getElementById("aiMessageInput");
+                if (aiInput) {
+                    aiInput.value = cmd;
+                    // Trigger canvas open
+                    const offcanvasEl = document.getElementById('aiOffcanvas');
+                    const bsOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
+                    bsOffcanvas.show();
+                    // Submit form
+                    document.getElementById("aiChatForm").dispatchEvent(new Event('submit'));
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
